@@ -1,0 +1,25 @@
+#!/bin/sh
+set -eu
+
+if ! command -v gitleaks >/dev/null 2>&1; then
+  echo "Gitleaks is required. Install it with: brew install gitleaks" >&2
+  exit 1
+fi
+
+while read -r local_ref local_oid remote_ref remote_oid; do
+  [ -n "${local_oid:-}" ] || continue
+
+  if printf '%s' "$local_oid" | grep -Eq '^[0]+$'; then
+    # A deleted local ref has no commits to scan.
+    continue
+  fi
+
+  if printf '%s' "$remote_oid" | grep -Eq '^[0]+$'; then
+    log_opts="$local_oid"
+  else
+    log_opts="$remote_oid..$local_oid"
+  fi
+
+  echo "Running Gitleaks for $local_ref -> $remote_ref..."
+  gitleaks git --log-opts="$log_opts" --redact --no-banner
+done
